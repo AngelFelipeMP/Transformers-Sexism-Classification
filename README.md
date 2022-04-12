@@ -1,4 +1,4 @@
-# Transformers-for-Arabic-hate-speech-and-offensive-language
-Transformers models for Hate Speech and Offensive Language Detection on Arabic Twitter
+# Transformers-sexism_classification
+Transformer models for sexism Detection and fine-grined classification on English and Spanish tweets
 
 ### The repo is under construction...
