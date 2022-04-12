@@ -2,7 +2,6 @@ import os
 import shutil
 import pandas as pd
 import gdown
-# from preprocess import ArabertPreprocessor
 import config
 
 def download_data(data_path, data_urls):
