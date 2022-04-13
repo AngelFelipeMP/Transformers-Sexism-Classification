@@ -156,7 +156,7 @@ if __name__ == "__main__":
                                     df_train = df_grid_search.loc[train_index]
                                     df_val = df_grid_search.loc[val_index]
                                     
-                                    tqdm.write(f'\nTask: {task} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr} Fold: {fold+1}/{config.SPLITS}')
+                                    tqdm.write(f'\nTask: {task} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr} Language: {language} Fold: {fold+1}/{config.SPLITS}')
                                     
                                     # add "language" as input to run & change order of the inputs
                                     df_results = run(df_train,

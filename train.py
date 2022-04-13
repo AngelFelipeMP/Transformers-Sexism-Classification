@@ -20,7 +20,6 @@ logging.set_verbosity_error()
 
 def join_results():
     list_of_results = []
-    # all_grid_search = config.DOMAIN_GRID_SEARCH + '.csv'
     
     for file in os.listdir(config.LOGS_PATH):
         if config.DOMAIN_GRID_SEARCH in file and file != config.DOMAIN_GRID_SEARCH + '.csv':
@@ -38,15 +37,17 @@ def best_parameters(task, transformer):
     for file in os.listdir(config.LOGS_PATH):
         if all_grid_search in file:
             df = pd.read_csv(config.LOGS_PATH + '/' + file)
-            parameters = df.loc[(df['transformer'] == transformer) & (df['task'] == task)].sort_values(by=['f1-macro_val'], ascending=False).iloc[0,:]
+            parameters = df.loc[(df['transformer'] == transformer) & (df['task'] == task)].sort_values(by=[config.METRICS[task] + '_val'], ascending=False).iloc[0,:]
             break
             
     return int(parameters['epoch']), int(parameters['max_len']), int(parameters['batch_size']), float(parameters['lr']), float(parameters['dropout'])
 
-def train(df_results, df_train, task, transformer, epochs, best_epoch, max_len, batch_size, lr, drop_out, data):
+# def train(df_results, df_train, task, transformer, epochs, best_epoch, max_len, batch_size, lr, drop_out, data):
+def train(df_train, task, epochs, best_epoch, transformer, max_len, batch_size, lr, drop_out, language, df_results, data):
     
     train_dataset = dataset.TransformerDataset(
-        text=df_train[config.DATASET_TEXT_PROCESSED].values,
+        # text=df_train[config.DATASET_TEXT_PROCESSED].values,
+        text=df_train[language].values,
         target=df_train[task].values,
         max_len=max_len,
         transformer=transformer
@@ -90,6 +91,7 @@ def train(df_results, df_train, task, transformer, epochs, best_epoch, max_len, 
         f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
         acc_train = metrics.accuracy_score(targ_train, pred_train)
         
+        # add "language" as input
         df_new_results = pd.DataFrame({'task':task,
                             'epoch':epoch,
                             'transformer':transformer,
@@ -97,6 +99,7 @@ def train(df_results, df_train, task, transformer, epochs, best_epoch, max_len, 
                             'batch_size':batch_size,
                             'lr':lr,
                             'dropout':drop_out,
+                            'language': language,
                             'accuracy_train':acc_train,
                             'f1-macro_train':f1_train,
                             'loss_train':loss_train
@@ -107,7 +110,8 @@ def train(df_results, df_train, task, transformer, epochs, best_epoch, max_len, 
         
         tqdm.write("Epoch {}/{} f1-macro_training = {:.3f}  accuracy_training = {:.3f}  loss_training = {:.3f}".format(epoch, best_epoch, f1_train, acc_train, loss_train))
     
-    torch.save(model.state_dict(), f'{config.LOGS_PATH}/{data}_task[{task}]_transformer[{transformer.split("/")[-1]}]_epoch[{epoch}]_maxlen[{max_len}]_batchsize[{batch_size}]_dropout[{drop_out}]_lr[{lr}].model')
+    # add "language" as input
+    torch.save(model.state_dict(), f'{config.LOGS_PATH}/{data}_task[{task}]_transformer[{transformer.split("/")[-1]}]_epoch[{epoch}]_maxlen[{max_len}]_batchsize[{batch_size}]_dropout[{drop_out}]_lr[{lr}_language[{language}].model')
 
     return df_results
 
@@ -141,19 +145,20 @@ if __name__ == "__main__":
     
     dataset_list = []
     for data in datasets:
-        df = pd.read_csv(config.DATA_PATH + '/' + data, sep='\t', index_col=None)
-        print(df.head())
-        print(df.shape)
+        df = pd.read_csv(config.DATA_PATH + '/' + data, index_col=None)
+        # print(df.head())
+        # print(df.shape)
         dataset_list.append(df)
     
     dfx = pd.concat(dataset_list, axis=0, ignore_index=True)
-    print(dfx.head())
-    print(dfx.shape)
-    if len(dataset_list)>1:
-        print(dfx.loc[dfx['index'] == 8888].head())
+    # print(dfx.head())
+    # print(dfx.shape)
+    # if len(dataset_list)>1:
+    #     print(dfx.loc[dfx['id'] == 6978].head())
     
     dfx = dfx.iloc[:config.N_ROWS]
     
+    # add "language" as input
     df_results = pd.DataFrame(columns=['task',
                                     'epoch',
                                     'transformer',
@@ -161,6 +166,7 @@ if __name__ == "__main__":
                                     'batch_size',
                                     'lr',
                                     'dropout',
+                                    'language',
                                     'accuracy_train',
                                     'f1-macro_train',
                                     'loss_train'
@@ -171,22 +177,56 @@ if __name__ == "__main__":
         
         df_train = dfx.loc[dfx[task]>=0]
         
-        for transformer in config.TRANSFORMERS:
+        # for transformer in config.TRANSFORMERS:
+        for language in config.TRANSFORMERS.keys():
+            for transformer in config.TRANSFORMERS[language]:
             
-            best_epoch, max_len, batch_size, lr, drop_out = best_parameters(task, transformer)
-            tqdm.write(f'\nTask: {task} Data: {domain} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr}')
+                best_epoch, max_len, batch_size, lr, drop_out = best_parameters(task, transformer)
+                tqdm.write(f'\nTask: {task} Data: {domain} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr} Language: {language}')
+                
+                # change order of the inputs & add language
+                df_results = train(df_train,
+                                    task,
+                                    config.EPOCHS,
+                                    best_epoch,
+                                    transformer,
+                                    max_len,
+                                    batch_size,
+                                    lr,
+                                    drop_out,
+                                    language,
+                                    df_results,
+                                    domain
+                )
+                
+                df_results.to_csv(config.LOGS_PATH + '/' + domain + '.csv', index=False)
             
-            df_results = train(df_results,
-                                df_train,
-                                task,
-                                transformer,
-                                config.EPOCHS,
-                                best_epoch,
-                                max_len,
-                                batch_size,
-                                lr,
-                                drop_out,
-                                domain
-            )
             
-            df_results.to_csv(config.LOGS_PATH + '/' + domain + '.csv', index=False)
+            
+            
+            
+# def best_parameters(task, transformer):
+#     join_results()
+#     all_grid_search = config.DOMAIN_GRID_SEARCH + '.csv'
+    
+#     for file in os.listdir(config.LOGS_PATH):
+#         if all_grid_search in file:
+#             df = pd.read_csv(config.LOGS_PATH + '/' + file)
+#             parameters = df.loc[(df['transformer'] == transformer) & (df['task'] == task)].sort_values(by=['f1-macro_val'], ascending=False).iloc[0,:]
+#             break
+            
+#     return int(parameters['epoch']), int(parameters['max_len']), int(parameters['batch_size']), float(parameters['lr']), float(parameters['dropout'])
+
+
+            # df_results = train(df_results,
+            #                     df_train,
+            #                     task,
+            #                     transformer,
+            #                     config.EPOCHS,
+            #                     best_epoch,
+            #                     max_len,
+            #                     batch_size,
+            #                     lr,
+            #                     drop_out,
+            #                     domain
+            # )
