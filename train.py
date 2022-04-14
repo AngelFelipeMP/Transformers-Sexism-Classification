@@ -60,7 +60,8 @@ def train(df_train, task, epochs, best_epoch, transformer, max_len, batch_size, 
     )
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = TransforomerModel(transformer, drop_out, number_of_classes=df_train[task].max()+1)
+    # model = TransforomerModel(transformer, drop_out, number_of_classes=df_train[task].max()+1)
+    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     model.to(device)
     
     param_optimizer = list(model.named_parameters())
@@ -111,7 +112,7 @@ def train(df_train, task, epochs, best_epoch, transformer, max_len, batch_size, 
         tqdm.write("Epoch {}/{} f1-macro_training = {:.3f}  accuracy_training = {:.3f}  loss_training = {:.3f}".format(epoch, best_epoch, f1_train, acc_train, loss_train))
     
     # add "language" as input
-    torch.save(model.state_dict(), f'{config.LOGS_PATH}/{data}_task[{task}]_transformer[{transformer.split("/")[-1]}]_epoch[{epoch}]_maxlen[{max_len}]_batchsize[{batch_size}]_dropout[{drop_out}]_lr[{lr}_language[{language}].model')
+    torch.save(model.state_dict(), f'{config.LOGS_PATH}/{data}_task[{task}]_transformer[{transformer.split("/")[-1]}]_epoch[{epoch}]_maxlen[{max_len}]_batchsize[{batch_size}]_dropout[{drop_out}]_lr[{lr}]_language[{language}].model')
 
     return df_results
 
@@ -200,33 +201,3 @@ if __name__ == "__main__":
                 )
                 
                 df_results.to_csv(config.LOGS_PATH + '/' + domain + '.csv', index=False)
-            
-            
-            
-            
-            
-# def best_parameters(task, transformer):
-#     join_results()
-#     all_grid_search = config.DOMAIN_GRID_SEARCH + '.csv'
-    
-#     for file in os.listdir(config.LOGS_PATH):
-#         if all_grid_search in file:
-#             df = pd.read_csv(config.LOGS_PATH + '/' + file)
-#             parameters = df.loc[(df['transformer'] == transformer) & (df['task'] == task)].sort_values(by=['f1-macro_val'], ascending=False).iloc[0,:]
-#             break
-            
-#     return int(parameters['epoch']), int(parameters['max_len']), int(parameters['batch_size']), float(parameters['lr']), float(parameters['dropout'])
-
-
-            # df_results = train(df_results,
-            #                     df_train,
-            #                     task,
-            #                     transformer,
-            #                     config.EPOCHS,
-            #                     best_epoch,
-            #                     max_len,
-            #                     batch_size,
-            #                     lr,
-            #                     drop_out,
-            #                     domain
-            # )

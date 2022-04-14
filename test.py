@@ -17,7 +17,8 @@ from transformers import AdamW
 from transformers import get_linear_schedule_with_warmup
 from transformers import logging
 logging.set_verbosity_error()
-from validation import validation, higher, majority, transformer_parameters
+# from validation import validation, higher, majority, transformer_parameters
+from validation import higher, majority, transformer_parameters
 
 def map_pred(pred, task):  
     for label, num in config.DATASET_CLASSES[task].items():
@@ -28,7 +29,8 @@ def test(df_test, task, transformer):
     parameters = transformer_parameters(task, transformer, config.DOMAIN_TRAIN_ALL_DATA)
     
     test_dataset = dataset.TransformerDataset_Test(
-        text=df_test[config.DATASET_TEXT_PROCESSED].values,
+        # text=df_test[config.DATASET_TEXT_PROCESSED].values,
+        text=df_test[config.ORIGINAL_TEXT].values,
         max_len=parameters['max_len'],
         transformer=transformer
     )
@@ -42,7 +44,8 @@ def test(df_test, task, transformer):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = TransforomerModel(transformer, parameters['dropout'], number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     
-    max(list(config.DATASET_CLASSES[task].values()))+1
+    ## TOP LOOK  THE SCRIPT HERE !!!!!
+    
     
     model.load_state_dict(torch.load(parameters['weights']))
     model.to(device)

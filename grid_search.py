@@ -51,7 +51,8 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     )
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = TransforomerModel(transformer, drop_out, number_of_classes=df_train[task].max()+1)
+    # model = TransforomerModel(transformer, drop_out, number_of_classes=df_train[task].max()+1)
+    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     model.to(device)
     
     param_optimizer = list(model.named_parameters())
