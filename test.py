@@ -14,10 +14,8 @@ import warnings
 warnings.filterwarnings('ignore')
 from sklearn import metrics
 from transformers import AdamW
-# from transformers import get_linear_schedule_with_warmup
 from transformers import logging
 logging.set_verbosity_error()
-# from validation import validation, higher, majority, transformer_parameters
 from validation import higher, majority, transformer_parameters
 
 def join_predictions(task, domain):
@@ -39,7 +37,6 @@ def test(df_test, task, transformer):
     parameters = transformer_parameters(task, transformer, config.DOMAIN_TRAIN_ALL_DATA)
     
     test_dataset = dataset.TransformerDataset_Test(
-        # text=df_test[config.DATASET_TEXT_PROCESSED].values,
         text=df_test[config.ORIGINAL_TEXT].values,
         max_len=parameters['max_len'],
         transformer=transformer
@@ -72,28 +69,20 @@ if __name__ == "__main__":
     for language in [l for l in list(config.TRANSFORMERS.keys()) if l != config.ORIGINAL_TEXT]:
         df_test = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_TEST)
         
-        
-        # df_val_metrics = pd.read_csv(config.LOGS_PATH + '/' + config.DOMAIN_VALIDATION + '_metrics' + '.csv')
         df_val_metrics = pd.read_csv(config.LOGS_PATH + '/' + config.DOMAIN_VALIDATION + '_metrics' + '_' + language + '.csv')
         models_dict = {}
         for task in config.LABELS:
-            # models_dict[task] = df_val_metrics.loc[df_val_metrics['model'].str.contains(task)].sort_values(by=['f1_macro'], ascending=False).reset_index(drop=True).loc[[0,1],'model'].tolist()
             models_dict[task] = df_val_metrics.loc[df_val_metrics['model'].str.contains(task)].sort_values(by=[config.METRICS[task]], ascending=False).reset_index(drop=True).loc[[0],'model'].tolist()
         
-        # for task in tqdm(config.LABELS, desc='TEST', position=0):
         for task in config.LABELS:
-            
-            # if task == 'C':
             if task == 'task2':
-                # df_val = df_test.loc[df_test[models_dict['B'][0]] >= 1]
                 df_val = df_test.loc[df_test[models_dict['task1'][0]] >= 1]
             else:
                 df_val = df_test
-                    
-            # for transformer in config.TRANSFORMERS:
+                
             for transformer in config.TRANSFORMERS[language] + config.TRANSFORMERS[config.ORIGINAL_TEXT]:
                 
-                tqdm.write(f'Task {task} - {transformer.split("/")[-1]} - Language {language}')
+                tqdm.write(f'Task: {task} - Transfomer: {transformer.split("/")[-1]} - Language/Text: {language}')
                 test_bar.update(1)
                 
                 predictions = test(df_val, 
@@ -110,25 +99,19 @@ if __name__ == "__main__":
             df_val[task + '_higher_sum'] = df_val.loc[:,columns_higher_sum].apply(lambda x: higher(x), axis=1)
             df_val[task + '_majority_vote'] = df_val.loc[:,columns_majority_vote].apply(lambda x: majority(x), axis=1)
             
-            # df_test = pd.merge(df_test, df_val.loc[:, df_val.columns.difference(df_test.columns[1:])], how='left', on='index')
             remove_col = [list(df_test.columns)[0]] + list(df_test.columns)[2:]
             df_test = pd.merge(df_test.loc[df_test['language']==language], df_val.loc[:, df_val.columns.difference(remove_col)], how='left', on='id')
             
         df_test = df_test.fillna(-1)
         
-        # df_test.to_csv(config.LOGS_PATH + '/' + config.DOMAIN_TEST + '_all_model' +'.csv', index=False)
         df_test.to_csv(config.LOGS_PATH + '/' + config.DOMAIN_TEST + '_all_model' + '_' + language + '.csv', index=False)
 
         for task in config.LABELS:
             for j, model in enumerate(models_dict[task]):
-                
-                # df_test.loc[:, ['index'] + [models_dict[task][j]]].to_csv(config.LOGS_PATH + '/' + config.DOMAIN_TEST + '_task_' + task + '_rank_' + str(j+1) + '_model_' + model + '_.csv', index=False)
                 df_test.loc[:, ['id'] + [models_dict[task][j]]].to_csv(config.LOGS_PATH + '/' + config.DOMAIN_TEST + '_task_' + task + '_rank_' + str(j+1) + '_model_' + model + '_' + language +  '.csv', index=False)
 
-                # df_original_labels = df_test.loc[:, ['index'] + [models_dict[task][j]]].copy()
                 df_original_labels = df_test.loc[:, ['id'] + [models_dict[task][j]]].copy()
                 df_original_labels['maped_predictions'] = df_original_labels.loc[:, models_dict[task][j]].apply(lambda x: map_pred(x, task))
-                # df_original_labels.loc[:, ['index','maped_predictions']].to_csv(config.LOGS_PATH + '/' + config.DOMAIN_TEST + '_task_' + task + '_rank_' + str(j+1) + '_model_' + model + '_maped_labels_' + '.csv', index=False)
                 df_original_labels.loc[:, ['id','maped_predictions']].to_csv(config.LOGS_PATH + '/' + config.DOMAIN_TEST + '_task_' + task + '_rank_' + str(j+1) + '_model_' + model + '_maped_labels_' + language +  '.csv', index=False)
 
 

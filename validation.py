@@ -13,8 +13,6 @@ from model import TransforomerModel
 import warnings
 warnings.filterwarnings('ignore')
 from sklearn import metrics
-# from transformers import AdamW
-# from transformers import get_linear_schedule_with_warmup
 from transformers import logging
 logging.set_verbosity_error()
 
@@ -53,7 +51,6 @@ def validation(df_val, task, transformer):
     parameters = transformer_parameters(task, transformer, config.DOMAIN_TRAIN)
     
     val_dataset = dataset.TransformerDataset(
-        # text=df_val[config.DATASET_TEXT_PROCESSED].values,
         text=df_val[config.ORIGINAL_TEXT].values,
         target=df_val[task].values,
         max_len=parameters['max_len'],
@@ -67,7 +64,6 @@ def validation(df_val, task, transformer):
     )
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = TransforomerModel(transformer, parameters['dropout'], number_of_classes=df_val[task].max()+1)
     model = TransforomerModel(transformer, parameters['dropout'], number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     model.load_state_dict(torch.load(parameters['weights']))
     model.to(device)
@@ -83,25 +79,23 @@ if __name__ == "__main__":
     torch.manual_seed(config.SEED)
     torch.cuda.manual_seed_all(config.SEED)
 
-    # dfx = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_DEV, nrows=config.N_ROWS).fillna("none")
-    
+
     inter =  len([l for l in list(config.TRANSFORMERS.keys()) if l != config.ORIGINAL_TEXT]) * len(config.LABELS) * (sum([len(t) + len(config.TRANSFORMERS[config.ORIGINAL_TEXT]) for l,t in config.TRANSFORMERS.items() if l != config.ORIGINAL_TEXT ])/2)
     validation_bar = tqdm(total=inter, desc='VALIDATION', position=0)
     
     for language in [l for l in list(config.TRANSFORMERS.keys()) if l != config.ORIGINAL_TEXT]:
-        # dfx = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_DEV, nrows=config.N_ROWS).fillna("none")
-        # ONLY FOR TEST SCRIPT
         dfx = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_DEV).fillna("none")
-        dfx = pd.concat([dfx.head(int(config.N_ROWS/2)), dfx.tail(int(config.N_ROWS/2))])
+        if config.N_ROWS:
+            dfx = pd.concat([dfx.head(config.N_ROWS//2), dfx.tail((config.N_ROWS//2 + config.N_ROWS%2))]).drop_duplicates(subset='id', keep="last")
+        print('\n')
+        print('Dataset shape: ', dfx.shape)
         
         for task in config.LABELS:
-            # df_val = dfx.loc[dfx[task]>=0]
             df_val = dfx.loc[(dfx[task]>=0) & (dfx['language']==language)]
-        
-            # for transformer in config.TRANSFORMERS:        
+
             for transformer in config.TRANSFORMERS[language] + config.TRANSFORMERS[config.ORIGINAL_TEXT]:
                 
-                tqdm.write(f'Task {task} - {transformer.split("/")[-1]} - Language {language}')
+                tqdm.write(f'Task: {task} - Transfomer: {transformer.split("/")[-1]} - Language/Text: {language}')
                 validation_bar.update(1)
                 
                 predictions, targets = validation(df_val,
@@ -118,13 +112,11 @@ if __name__ == "__main__":
             df_val[task + '_higher_sum'] = df_val.loc[:,columns_higher_sum].apply(lambda x: higher(x), axis=1)
             df_val[task + '_majority_vote'] = df_val.loc[:,columns_majority_vote].apply(lambda x: majority(x), axis=1)
             
-            # dfx = pd.merge(dfx, df_val.loc[:, df_val.columns.difference(dfx.columns[1:])], how='left', on='index')
             remove_col = [list(dfx.columns)[0]] + list(dfx.columns)[2:]
             dfx = pd.merge(dfx.loc[dfx['language']==language], df_val.loc[:, df_val.columns.difference(remove_col)], how='left', on='id')
         
         dfx = dfx.fillna(-1)
     
-        # dfx.to_csv(config.LOGS_PATH + '/' + config.DOMAIN_VALIDATION + '.csv', index=False)
         dfx.to_csv(config.LOGS_PATH + '/' + config.DOMAIN_VALIDATION + '_' + language + '.csv', index=False)
 
     

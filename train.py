@@ -42,11 +42,10 @@ def best_parameters(task, transformer):
             
     return int(parameters['epoch']), int(parameters['max_len']), int(parameters['batch_size']), float(parameters['lr']), float(parameters['dropout'])
 
-# def train(df_results, df_train, task, transformer, epochs, best_epoch, max_len, batch_size, lr, drop_out, data):
+
 def train(df_train, task, epochs, best_epoch, transformer, max_len, batch_size, lr, drop_out, language, df_results, data):
     
     train_dataset = dataset.TransformerDataset(
-        # text=df_train[config.DATASET_TEXT_PROCESSED].values,
         text=df_train[language].values,
         target=df_train[task].values,
         max_len=max_len,
@@ -60,7 +59,6 @@ def train(df_train, task, epochs, best_epoch, transformer, max_len, batch_size, 
     )
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = TransforomerModel(transformer, drop_out, number_of_classes=df_train[task].max()+1)
     model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     model.to(device)
     
@@ -92,7 +90,6 @@ def train(df_train, task, epochs, best_epoch, transformer, max_len, batch_size, 
         f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
         acc_train = metrics.accuracy_score(targ_train, pred_train)
         
-        # add "language" as input
         df_new_results = pd.DataFrame({'task':task,
                             'epoch':epoch,
                             'transformer':transformer,
@@ -147,19 +144,11 @@ if __name__ == "__main__":
     dataset_list = []
     for data in datasets:
         df = pd.read_csv(config.DATA_PATH + '/' + data, index_col=None)
-        # print(df.head())
-        # print(df.shape)
         dataset_list.append(df)
     
-    dfx = pd.concat(dataset_list, axis=0, ignore_index=True)
-    # print(dfx.head())
-    # print(dfx.shape)
-    # if len(dataset_list)>1:
-    #     print(dfx.loc[dfx['id'] == 6978].head())
+    dfx = pd.concat(dataset_list, axis=0, ignore_index=True).iloc[:config.N_ROWS]
+    print('Dataset shape: ', dfx.shape)
     
-    dfx = dfx.iloc[:config.N_ROWS]
-    
-    # add "language" as input
     df_results = pd.DataFrame(columns=['task',
                                     'epoch',
                                     'transformer',
@@ -178,14 +167,12 @@ if __name__ == "__main__":
         
         df_train = dfx.loc[dfx[task]>=0]
         
-        # for transformer in config.TRANSFORMERS:
         for language in config.TRANSFORMERS.keys():
             for transformer in config.TRANSFORMERS[language]:
             
                 best_epoch, max_len, batch_size, lr, drop_out = best_parameters(task, transformer)
-                tqdm.write(f'\nTask: {task} Data: {domain} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr} Language: {language}')
+                tqdm.write(f'\nTask: {task} Data: {domain} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr} Language/Text: {language.upper()}')
                 
-                # change order of the inputs & add language
                 df_results = train(df_train,
                                     task,
                                     config.EPOCHS,

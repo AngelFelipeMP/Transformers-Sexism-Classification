@@ -19,11 +19,9 @@ from transformers import logging
 logging.set_verbosity_error()
 
 
-# def run(df_train, df_val, max_len, task, transformer, batch_size, drop_out, lr, df_results):
 def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, language, df_results):
     
     train_dataset = dataset.TransformerDataset(
-        # text=df_train[config.DATASET_TEXT_PROCESSED].values,
         text=df_train[language].values,
         target=df_train[task].values,
         max_len=max_len,
@@ -37,7 +35,6 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     )
 
     val_dataset = dataset.TransformerDataset(
-        # text=df_val[config.DATASET_TEXT_PROCESSED].values,
         text=df_val[language].values,
         target=df_val[task].values,
         max_len=max_len,
@@ -51,7 +48,6 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     )
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = TransforomerModel(transformer, drop_out, number_of_classes=df_train[task].max()+1)
     model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     model.to(device)
     
@@ -87,7 +83,6 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
         f1_val = metrics.f1_score(targ_val, pred_val, average='macro')
         acc_val = metrics.accuracy_score(targ_val, pred_val)
         
-        # add "language" as input
         df_new_results = pd.DataFrame({'task':task,
                             'epoch':epoch,
                             'transformer':transformer,
@@ -120,7 +115,6 @@ if __name__ == "__main__":
     dfx = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_TRAIN, nrows=config.N_ROWS).fillna("none")
     skf = StratifiedKFold(n_splits=config.SPLITS, shuffle=True, random_state=config.SEED)
 
-    # add "language" as input
     df_results = pd.DataFrame(columns=['task',
                                         'epoch',
                                         'transformer',
@@ -138,28 +132,26 @@ if __name__ == "__main__":
             ]
     )
     
-    # inter = len(config.LABELS) * len(config.TRANSFORMERS) * len(config.MAX_LEN) * len(config.BATCH_SIZE) * len(config.DROPOUT) * len(config.LR) * config.SPLITS
     inter = len(config.LABELS) * sum([len(l) for l in config.TRANSFORMERS.values()]) * len(config.MAX_LEN) * len(config.BATCH_SIZE) * len(config.DROPOUT) * len(config.LR) * config.SPLITS
     grid_search_bar = tqdm(total=inter, desc='GRID SEARCH', position=2)
     
     for task in tqdm(config.LABELS, desc='TASKS', position=1):
         df_grid_search = dfx.loc[dfx[task]>=0].reset_index(drop=True)
-        # for transformer in tqdm(config.TRANSFORMERS, desc='TRANSFOMERS', position=0):
+        
         for language in tqdm(config.TRANSFORMERS.keys(), desc='TRANSFOMERS', position=0):
             for transformer in config.TRANSFORMERS[language]:
+                
                 for max_len in config.MAX_LEN:
                     for batch_size in config.BATCH_SIZE:
                         for drop_out in config.DROPOUT:
                             for lr in config.LR:
                                 
-                                # for fold, (train_index, val_index) in enumerate(skf.split(df_grid_search[config.DATASET_TEXT_PROCESSED], df_grid_search[task])):
                                 for fold, (train_index, val_index) in enumerate(skf.split(df_grid_search[language], df_grid_search[task])):
                                     df_train = df_grid_search.loc[train_index]
                                     df_val = df_grid_search.loc[val_index]
                                     
-                                    tqdm.write(f'\nTask: {task} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr} Language: {language} Fold: {fold+1}/{config.SPLITS}')
+                                    tqdm.write(f'\nTask: {task} Transfomer: {transformer.split("/")[-1]} Max_len: {max_len} Batch_size: {batch_size} Dropout: {drop_out} lr: {lr} Language/Text: {language.upper()} Fold: {fold+1}/{config.SPLITS}')
                                     
-                                    # add "language" as input to run & change order of the inputs
                                     df_results = run(df_train,
                                                         df_val,
                                                         task, 
@@ -174,7 +166,6 @@ if __name__ == "__main__":
                                 
                                     grid_search_bar.update(1)
                                 
-                                # add "language" as input
                                 df_results = df_results.groupby(['task',
                                                                 'epoch',
                                                                 'transformer',
