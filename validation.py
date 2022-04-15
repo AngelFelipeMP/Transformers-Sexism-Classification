@@ -92,11 +92,7 @@ if __name__ == "__main__":
         # dfx = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_DEV, nrows=config.N_ROWS).fillna("none")
         # ONLY FOR TEST SCRIPT
         dfx = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_DEV).fillna("none")
-        print(dfx.shape)
         dfx = pd.concat([dfx.head(int(config.N_ROWS/2)), dfx.tail(int(config.N_ROWS/2))])
-        print(dfx.shape)
-        print(dfx.head())
-        print(dfx.tail())
         
         for task in config.LABELS:
             # df_val = dfx.loc[dfx[task]>=0]
@@ -126,7 +122,6 @@ if __name__ == "__main__":
             remove_col = [list(dfx.columns)[0]] + list(dfx.columns)[2:]
             dfx = pd.merge(dfx.loc[dfx['language']==language], df_val.loc[:, df_val.columns.difference(remove_col)], how='left', on='id')
         
-        # dfx = dfx.fillna(-1)
         dfx = dfx.fillna(-1)
     
         # dfx.to_csv(config.LOGS_PATH + '/' + config.DOMAIN_VALIDATION + '.csv', index=False)
@@ -136,13 +131,13 @@ if __name__ == "__main__":
         metric_col = [col for col in dfx.columns if any(item in col for item in config.LABELS)]
         metric_col = [col for col in metric_col if '_outputs' not in col]
         
-        metric_dic = {'model':[], 'accuracy':[], 'f1_macro':[]}
+        metric_dic = {'model':[], 'accuracy':[], 'f1-macro':[]}
         
         for task in config.LABELS:
             for col in metric_col:
                 if task in col and task != col:
                     metric_dic['model'].append(col)
-                    metric_dic['f1_macro'].append(metrics.f1_score(dfx[task], dfx[col], average='macro'))
+                    metric_dic['f1-macro'].append(metrics.f1_score(dfx[task], dfx[col], average='macro'))
                     metric_dic['accuracy'].append(metrics.accuracy_score(dfx[task], dfx[col]))
                 
         
