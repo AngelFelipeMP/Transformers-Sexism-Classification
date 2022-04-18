@@ -1,6 +1,6 @@
 import os
 import dataset
-import engine_2gpus
+import engine
 import torch
 import pandas as pd
 import numpy as np
@@ -8,8 +8,8 @@ import random
 import config
 from tqdm import tqdm
 
+from model_GPT2 import TransforomerModel
 # from model import TransforomerModel
-from model_2gpus import TransforomerModel
 import warnings
 warnings.filterwarnings('ignore') 
 from sklearn.model_selection import StratifiedKFold
@@ -48,10 +48,8 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
         num_workers=config.VAL_WORKERS
     )
 
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     device = torch.device('cuda:0')
-    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1, device=device)
-    # model.to(device)
+    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     
     param_optimizer = list(model.named_parameters())
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
@@ -77,11 +75,11 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     )
     
     for epoch in range(1, config.EPOCHS+1):
-        pred_train, targ_train, loss_train = engine_2gpus.train_fn(train_data_loader, model, optimizer, device, scheduler)
+        pred_train, targ_train, loss_train = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
         f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
         acc_train = metrics.accuracy_score(targ_train, pred_train)
         
-        pred_val, targ_val, loss_val = engine_2gpus.eval_fn(val_data_loader, model, device)
+        pred_val, targ_val, loss_val = engine.eval_fn(val_data_loader, model, device)
         f1_val = metrics.f1_score(targ_val, pred_val, average='macro')
         acc_val = metrics.accuracy_score(targ_val, pred_val)
         

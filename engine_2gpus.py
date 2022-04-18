@@ -3,7 +3,8 @@ import torch.nn as nn
 
 
 def loss_fn(outputs, targets):
-    return nn.CrossEntropyLoss()(outputs, targets).to('cuda:1')
+    loss = nn.CrossEntropyLoss().to('cuda:1')
+    return loss(outputs, targets)
 
 
 def train_fn(data_loader, model, optimizer, device, scheduler):

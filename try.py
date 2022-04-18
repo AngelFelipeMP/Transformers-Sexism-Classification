@@ -1,24 +1,28 @@
 import os
 import dataset
-import engine_2gpus
+# import engine
+import engine_accelerator
 import torch
+import torch.nn as nn
 import pandas as pd
 import numpy as np
 import random
 import config
 from tqdm import tqdm
 
-# from model import TransforomerModel
-from model_2gpus import TransforomerModel
+from model import TransforomerModel
 import warnings
 warnings.filterwarnings('ignore') 
 from sklearn.model_selection import StratifiedKFold
 from sklearn import metrics
-from transformers import AdamW
+from transformers import AdamW, AutoModelForSequenceClassification
 from transformers import get_linear_schedule_with_warmup
 from transformers import logging
 logging.set_verbosity_error()
+from accelerate import Accelerator
 
+def loss_fn(outputs, targets):
+    return nn.CrossEntropyLoss()(outputs, targets)
 
 def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, language, df_results):
     
@@ -32,7 +36,7 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     train_data_loader = torch.utils.data.DataLoader(
         dataset=train_dataset, 
         batch_size=batch_size, 
-        num_workers = config.TRAIN_WORKERS
+        # num_workers = config.TRAIN_WORKERS
     )
 
     val_dataset = dataset.TransformerDataset(
@@ -45,13 +49,12 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     val_data_loader = torch.utils.data.DataLoader(
         dataset=val_dataset, 
         batch_size=batch_size, 
-        num_workers=config.VAL_WORKERS
+        # num_workers=config.VAL_WORKERS
     )
 
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cuda:0')
-    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1, device=device)
-    # model.to(device)
+    accelerator = Accelerator()
+    model = AutoModelForSequenceClassification.from_pretrained(transformer, num_labels=max(list(config.DATASET_CLASSES[task].values()))+1)
+    # model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     
     param_optimizer = list(model.named_parameters())
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
@@ -72,19 +75,58 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
 
     num_train_steps = int(len(df_train) / batch_size * config.EPOCHS)
     optimizer = AdamW(optimizer_parameters, lr=lr)
+    
+    ### NEW LINE
+    model, optimizer, train_data_loader, val_data_loader = accelerator.prepare(model, optimizer, train_data_loader, val_data_loader)
+    
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=num_train_steps
     )
     
+    
     for epoch in range(1, config.EPOCHS+1):
-        pred_train, targ_train, loss_train = engine_2gpus.train_fn(train_data_loader, model, optimizer, device, scheduler)
-        f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
-        acc_train = metrics.accuracy_score(targ_train, pred_train)
+        model.train()
+
         
-        pred_val, targ_val, loss_val = engine_2gpus.eval_fn(val_data_loader, model, device)
-        f1_val = metrics.f1_score(targ_val, pred_val, average='macro')
-        acc_val = metrics.accuracy_score(targ_val, pred_val)
+        if accelerator.is_main_process:
+            print('OK!! accelerator.is_main_process')
+        else:
+            print('NOT accelerator.is_main_process')
+            
         
+        for batch in train_data_loader:
+            targets = batch["targets"]
+            del batch["targets"]
+            
+            optimizer.zero_grad()
+            outputs = model(batch)
+            
+            with accelerator.autocast():
+                with accelerator.autocast():
+                    loss = loss_fn(outputs, targets)
+
+            accelerator.backward(loss)
+            print('*TRAIN*'*30)
+            optimizer.step()
+            print('*BBBB*'*30)
+            scheduler.step()
+            
+            
+        model.eval()
+        with torch.no_grad():
+            for batch in val_data_loader:
+                targets = batch["targets"]
+                del batch["targets"]
+                
+                
+        f1_train = metrics.f1_score([0,0], [0,0], average='macro')
+        acc_train = metrics.accuracy_score([0,0], [0,0])
+        loss_train = 0.1
+
+        f1_val = metrics.f1_score([0,0], [0,0], average='macro')
+        acc_val = metrics.accuracy_score([0,0], [0,0])
+        loss_val = 0.1
+    
         df_new_results = pd.DataFrame({'task':task,
                             'epoch':epoch,
                             'transformer':transformer,

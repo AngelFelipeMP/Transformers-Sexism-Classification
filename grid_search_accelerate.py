@@ -1,6 +1,7 @@
 import os
 import dataset
-import engine_2gpus
+# import engine
+import engine_accelerator
 import torch
 import pandas as pd
 import numpy as np
@@ -8,8 +9,7 @@ import random
 import config
 from tqdm import tqdm
 
-# from model import TransforomerModel
-from model_2gpus import TransforomerModel
+from model import TransforomerModel
 import warnings
 warnings.filterwarnings('ignore') 
 from sklearn.model_selection import StratifiedKFold
@@ -18,7 +18,7 @@ from transformers import AdamW
 from transformers import get_linear_schedule_with_warmup
 from transformers import logging
 logging.set_verbosity_error()
-
+from accelerate import Accelerator
 
 def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, language, df_results):
     
@@ -32,7 +32,7 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     train_data_loader = torch.utils.data.DataLoader(
         dataset=train_dataset, 
         batch_size=batch_size, 
-        num_workers = config.TRAIN_WORKERS
+        # num_workers = config.TRAIN_WORKERS
     )
 
     val_dataset = dataset.TransformerDataset(
@@ -45,13 +45,14 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
     val_data_loader = torch.utils.data.DataLoader(
         dataset=val_dataset, 
         batch_size=batch_size, 
-        num_workers=config.VAL_WORKERS
+        # num_workers=config.VAL_WORKERS
     )
 
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cuda:0')
-    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1, device=device)
-    # model.to(device)
+    # accelerator = Accelerator(device_placement=True)
+    accelerator = Accelerator()
+    # device = accelerator.device
+    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
     
     param_optimizer = list(model.named_parameters())
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
@@ -72,16 +73,21 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
 
     num_train_steps = int(len(df_train) / batch_size * config.EPOCHS)
     optimizer = AdamW(optimizer_parameters, lr=lr)
+    
+    ### NEW LINE
+    model, optimizer, train_data_loader, val_data_loader = accelerator.prepare(model, optimizer, train_data_loader, val_data_loader)
+    
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=num_train_steps
     )
     
+    
     for epoch in range(1, config.EPOCHS+1):
-        pred_train, targ_train, loss_train = engine_2gpus.train_fn(train_data_loader, model, optimizer, device, scheduler)
+        pred_train, targ_train, loss_train = engine_accelerator.train_fn(train_data_loader, model, optimizer, scheduler, accelerator)
         f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
         acc_train = metrics.accuracy_score(targ_train, pred_train)
-        
-        pred_val, targ_val, loss_val = engine_2gpus.eval_fn(val_data_loader, model, device)
+
+        pred_val, targ_val, loss_val = engine_accelerator.eval_fn(val_data_loader, model)
         f1_val = metrics.f1_score(targ_val, pred_val, average='macro')
         acc_val = metrics.accuracy_score(targ_val, pred_val)
         
