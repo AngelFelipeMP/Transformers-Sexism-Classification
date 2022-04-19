@@ -8,8 +8,8 @@ import random
 import config
 from tqdm import tqdm
 
-# from model import TransforomerModel
-from model_2gpus import TransforomerModel
+from model import TransforomerModel
+from model_2gpus import TransforomerModel as TransforomerModel_2gpus
 import warnings
 warnings.filterwarnings('ignore') 
 from sklearn.model_selection import StratifiedKFold
@@ -48,10 +48,16 @@ def run(df_train, df_val, task, transformer, max_len, batch_size, lr, drop_out, 
         num_workers=config.VAL_WORKERS
     )
 
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cuda:0')
-    model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1, device=device)
-    # model.to(device)
+    # device = torch.device('cuda:0')
+    # model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1, device=device)
+    
+    if any(transformer == m for m in config.GRID_2GPUS ):
+        device = torch.device('cuda:0')
+        model = TransforomerModel_2gpus(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1, device=device)
+    else:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = TransforomerModel(transformer, drop_out, number_of_classes=max(list(config.DATASET_CLASSES[task].values()))+1)
+        model.to(device)
     
     param_optimizer = list(model.named_parameters())
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
