@@ -1,6 +1,7 @@
 import os
 import dataset
 import engine
+import engine_2gpus
 import torch
 import pandas as pd
 import numpy as np
@@ -91,9 +92,14 @@ def train(df_train, task, epochs, best_epoch, transformer, max_len, batch_size, 
     )
     
     for epoch in range(1, best_epoch+1):
-        pred_train, targ_train, loss_train = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
-        f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
-        acc_train = metrics.accuracy_score(targ_train, pred_train)
+        if any(transformer == m for m in config.GRID_2GPUS ):
+            pred_train, targ_train, loss_train = engine_2gpus.train_fn(train_data_loader, model, optimizer, device, scheduler)
+            f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
+            acc_train = metrics.accuracy_score(targ_train, pred_train)
+        else:
+            pred_train, targ_train, loss_train = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
+            f1_train = metrics.f1_score(targ_train, pred_train, average='macro')
+            acc_train = metrics.accuracy_score(targ_train, pred_train)
         
         df_new_results = pd.DataFrame({'task':task,
                             'epoch':epoch,
