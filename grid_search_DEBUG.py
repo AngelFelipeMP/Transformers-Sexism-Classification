@@ -177,6 +177,7 @@ if __name__ == "__main__":
                                     )
                                 
                                     grid_search_bar.update(1)
+                                    
                                 
                                 df_results = df_results.groupby(['task',
                                                                 'epoch',
