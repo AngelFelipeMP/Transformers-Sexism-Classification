@@ -16,7 +16,7 @@ If you find this article <!-- [article](proceedining link) --> or the [code](htt
 
 
 ```
-@article{gonzalo2021iberlef,
+@article{depaula2022exist,
   title={Detection and Classification of Sexism on Social Media Using Multiple Languages, Transformers, and Ensemble Models},
   author={de Paula, Angel Felipe Magnoss{\~a}o and da Silva, Roberto Fray and Schlicht},
   booktitle={Proceedings of the Iberian Languages Evaluation Forum (IberLEF 2022) co-located with the Conference of the Spanish Society for Natural Language Processing (SEPLN 2022), XXXVIII International Conference of the Spanish Society for Natural Language Processing., La Coru{\~n}a, Spain},
