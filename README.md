@@ -12,7 +12,7 @@ Identifying and classifying sexist content in social media posts is a highly com
 
 
 # Cite
-If you find this article <!-- [article](proceedining link) --> or the [code](https://github.com/AngelFelipeMP/Transformers-Sexism-Classification) useful in your research, please cite us as: (link coming soon)
+If you find this [article](https://ceur-ws.org/Vol-3202/exist-paper2.pdf) or the [code](https://github.com/AngelFelipeMP/Transformers-Sexism-Classification) useful in your research, please cite us as: (link coming soon)
 
 
 ```
@@ -37,7 +37,7 @@ If you find this article <!-- [article](proceedining link) --> or the [code](htt
 # Credits
 EXIST 2022 shared Task Organizers
 
-EXIST 2022 proceedings: (link coming soon)
+EXIST 2022 proceedings: https://ceur-ws.org/Vol-3202
 
 Task website: http://nlp.uned.es/exist2022/
 
