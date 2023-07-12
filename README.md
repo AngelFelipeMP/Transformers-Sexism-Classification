@@ -18,22 +18,12 @@ If you find this [article](https://ceur-ws.org/Vol-3202/exist-paper2.pdf) or the
 ```
 @proceedings{depaula2022exist,
   title={Detection and Classification of Sexism on Social Media Using Multiple Languages, Transformers, and Ensemble Models},
-  author={de Paula, Angel Felipe Magnoss{\~a}o and da Silva, Roberto Fray},
+  author={Magnoss{\~a}o de Paula, Angel Felipe and da Silva, Roberto Fray},
   booktitle={Proceedings of the Iberian Languages Evaluation Forum (IberLEF 2022) co-located with the Conference of the Spanish Society for Natural Language Processing (SEPLN 2022)},
   address={La Coru{\~n}a, Spain},
   year={2021}
   }
 ```
-<!-- 
-```
-@article{de2021sexism,
-  title={Sexism Prediction in Spanish and English Tweets Using Monolingual and Multilingual BERT and Ensemble Models},
-  author={de Paula, Angel Felipe Magnoss{\~a}o and da Silva, Roberto Fray and Schlicht, Ipek Baris},
-  journal={arXiv preprint arXiv:2111.04551},
-  year={2021}
-```
-} -->
-
 
 # Credits
 EXIST 2022 shared Task Organizers
